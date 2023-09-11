@@ -1,28 +1,40 @@
 #!/usr/bin/python3
-""" Script that distributes an archive to your web servers using do_deploy"""
+""" Function that compress a folder """
+from datetime import datetime
+from fabric.api import *
+import shlex
+import os
 
-from fabric.api import local
-from fabric.operations import run, put, sudo
-import os.path
-from fabric.api import env
-env.hosts = ['35.185.103.0', '35.237.21.105']
+
+env.hosts = ['52.3.248.75', '52.72.13.102']
+env.user = "ubuntu"
 
 
 def do_deploy(archive_path):
-    if (os.path.isfile(archive_path) is False):
+    """ Deploys """
+    if not os.path.exists(archive_path):
         return False
-
     try:
-        nconfig = archive_path.split("/")[-1]
-        ndir = ("/data/web_static/releases/" + nconfig.split(".")[0])
+        name = archive_path.replace('/', ' ')
+        name = shlex.split(name)
+        name = name[-1]
+
+        wname = name.replace('.', ' ')
+        wname = shlex.split(wname)
+        wname = wname[0]
+
+        releases_path = "/data/web_static/releases/{}/".format(wname)
+        tmp_path = "/tmp/{}".format(name)
+
         put(archive_path, "/tmp/")
-        run("sudo mkdir -p {}".format(ndir))
-        run("sudo tar -xzf /tmp/{} -C {}".format(nconfig, ndir))
-        run("sudo rm /tmp/{}".format(nconfig))
-        run("sudo mv {}/web_static/* {}/".format(ndir, ndir))
-        run("sudo rm -rf {}/web_static".format(ndir))
-        run("sudo rm -rf /data/web_static/current")
-        run("sudo ln -s {} /data/web_static/current".format(ndir))
+        run("mkdir -p {}".format(releases_path))
+        run("tar -xzf {} -C {}".format(tmp_path, releases_path))
+        run("rm {}".format(tmp_path))
+        run("mv {}web_static/* {}".format(releases_path, releases_path))
+        run("rm -rf {}web_static".format(releases_path))
+        run("rm -rf /data/web_static/current")
+        run("ln -s {} /data/web_static/current".format(releases_path))
+        print("New version deployed!")
         return True
     except:
         return False
